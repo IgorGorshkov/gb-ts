@@ -1,18 +1,10 @@
-import { renderSearchFormBlock } from "./search-form.js";
-import { renderSearchStubBlock } from "./search-results.js";
-import { renderUserBlock } from "./user.js";
-import { renderToast } from "./lib.js";
-window.addEventListener("DOMContentLoaded", () => {
-    renderUserBlock("Den Warren", "/img/avatar.png", 0);
+import { renderSearchFormBlock, getFormData } from './search-form.js';
+import { renderSearchStubBlock } from './search-results.js';
+import { renderUserInfo } from './user.js';
+window.addEventListener('DOMContentLoaded', () => {
+    localStorage.setItem('user', JSON.stringify({ username: 'Den Warren', avatarUrl: '/img/avatar.png' }));
+    renderUserInfo();
     renderSearchFormBlock();
     renderSearchStubBlock();
-    renderToast({
-        text: "Это пример уведомления. Используйте его при необходимости",
-        type: "success",
-    }, {
-        name: "Понял",
-        handler: () => {
-            console.log("Уведомление закрыто");
-        },
-    });
+    getFormData();
 });

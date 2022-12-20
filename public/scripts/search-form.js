@@ -1,23 +1,51 @@
-import { renderBlock, getISODate, getLastDayOfMonth } from "./lib.js";
-export function renderSearchFormBlock(checkin = "", checkout = "") {
-    let minDate = new Date(), maxDate = new Date(), checkinDefaultDate = new Date(), checkoutDefaultDate = new Date();
+import { renderBlock, getISODate, getLastDayOfMonth } from './lib.js';
+import { HomyProvider, FlatRentProvider, SortingMap } from './search.js';
+import { renderSearchResultsBlock } from './search-results.js';
+export function getFormData() {
+    const form = document.getElementById('form');
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const city = document.getElementById('city'), checkin = document.getElementById('check-in-date'), checkout = document.getElementById('check-out-date'), maxprice = document.getElementById('max-price'), coordinates = document.getElementById('coordinates');
+        const data = {
+            city: city.value,
+            checkin: new Date(checkin.value),
+            checkout: new Date(checkout.value),
+            maxprice: maxprice.value ? +maxprice.value : null,
+            coordinates: coordinates.value,
+        };
+        const homySearch = new HomyProvider();
+        const flatSearch = new FlatRentProvider();
+        Promise.all([
+            homySearch.find(data),
+            flatSearch.find(data)
+        ]).then((results) => {
+            const sorting = localStorage.getItem('sorting');
+            const allResults = [...results[0], ...results[1]];
+            allResults.sort(SortingMap[sorting ? sorting : 'asc'].fnc);
+            renderSearchResultsBlock(allResults);
+        });
+    });
+    return form;
+}
+export function renderSearchFormBlock(checkin = '', checkout = '') {
+    const minDate = new Date(), maxDate = new Date(), checkinDefaultDate = new Date(), checkoutDefaultDate = new Date();
     maxDate.setMonth(maxDate.getMonth() + 1);
     maxDate.setDate(getLastDayOfMonth(maxDate.getFullYear(), maxDate.getMonth()));
     checkinDefaultDate.setDate(checkinDefaultDate.getDate() + 1);
     checkoutDefaultDate.setDate(checkoutDefaultDate.getDate() + 3);
-    renderBlock("search-form-block", `
-    <form>
+    renderBlock('search-form-block', `
+    <form id="form">
       <fieldset class="search-filedset">
         <div class="row">
           <div>
             <label for="city">Город</label>
-            <input id="city" type="text" disabled value="Севастополь" />
-            <input type="hidden" disabled value="59.9386,30.3141" />
+            <input id="city" name="city" type="text" disabled value="Санкт-Петербург" />
+            <input type="hidden" id="coordinates" name="coordinates" disabled value="59.9386,30.3141" />
           </div>
           <!--<div class="providers">
-            <label><input type="checkbox" name="provider" value="homy" checked /> Homy</label>
-            <label><input type="checkbox" name="provider" value="flat-rent" checked /> FlatRent</label>
-          </div>--!>
+            <label><input type="checkbox" name="provider[]" value="homy" checked /> Homy</label>
+            <label><input type="checkbox" name="provider[]" value="flat-rent" checked /> FlatRent</label>
+          </div>-->
         </div>
         <div class="row">
           <div>
