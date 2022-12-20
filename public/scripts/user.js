@@ -1,6 +1,34 @@
-import { renderBlock } from './lib.js';
+import { renderBlock, renderToast } from './lib.js';
+export class User {
+    constructor(username, avatarUrl) {
+        this.username = username;
+        this.avatarUrl = avatarUrl;
+    }
+}
+export function getUserData() {
+    const userData = localStorage.getItem('user');
+    const data = typeof userData === 'string' ? JSON.parse(userData) : undefined;
+    if (typeof data === 'object' && 'username' in data && 'avatarUrl' in data) {
+        return new User(data.username, data.avatarUrl);
+    }
+    return 'Возможно вы не залогинены!';
+}
+export function getFavoritesAmount() {
+    const amountData = localStorage.getItem('favoritesAmount');
+    const amount = typeof amountData === 'string' ? JSON.parse(amountData) : undefined;
+    if (!isNaN(Number(amount))) {
+        return Number(amount);
+    }
+    return 0;
+}
 export function renderUserBlock(name, avatar, favoriteItemsAmount) {
-    const favoritesCaption = favoriteItemsAmount > 0 ? favoriteItemsAmount : 'ничего нет';
+    let favoritesCaption;
+    if (favoriteItemsAmount && favoriteItemsAmount > 0) {
+        favoritesCaption = favoriteItemsAmount;
+    }
+    else {
+        favoritesCaption = 'ничего нет';
+    }
     const hasFavoriteItems = favoriteItemsAmount ? true : false;
     renderBlock('user-block', `
     <div class="header-container">
@@ -13,4 +41,26 @@ export function renderUserBlock(name, avatar, favoriteItemsAmount) {
       </div>
     </div>
     `);
+}
+export function renderUserInfo() {
+    const user = getUserData();
+    const userFavorites = getFavoritesAmount();
+    if (user instanceof User && typeof userFavorites === 'number') {
+        renderUserBlock(user.username, user.avatarUrl, userFavorites);
+    }
+    if (user instanceof User && typeof userFavorites !== 'number') {
+        renderUserBlock(user.username, user.avatarUrl);
+    }
+    if (typeof user === 'string') {
+        renderToast({
+            text: `${user}`,
+            type: 'success',
+        }, {
+            name: 'Понял',
+            handler: () => {
+                console.log('Уведомление закрыто');
+            },
+        });
+        renderBlock('user-block', `<br/><p>${user}</p>`);
+    }
 }
