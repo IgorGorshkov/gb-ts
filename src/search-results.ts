@@ -1,4 +1,7 @@
 import { renderBlock } from './lib.js';
+import { Place, Favorite } from './app-types';
+import { renderUserInfo } from './user.js';
+import { SortingMap } from './search.js';
 
 export function renderSearchStubBlock() {
   renderBlock(
@@ -12,7 +15,45 @@ export function renderSearchStubBlock() {
   );
 }
 
-export function renderEmptyOrErrorSearchBlock(reasonMessage) {
+export function toggleFavoriteItem(data: Place): void {
+  const itemsData: unknown = localStorage.getItem('favoriteItems');
+  const items =
+    typeof itemsData === 'string' ? JSON.parse(itemsData) : undefined;
+  const store = {};
+  if (inFavorite(data)) {
+    const values: Favorite[] = Object.values(items);
+    const filtered: Favorite[] = values.filter(function (item: Favorite) {
+      return item.id != data.id;
+    });
+    Object.assign(store, {
+      ...filtered
+    });
+  } else {
+    Object.assign(store, {
+      ...items,
+      [Object.keys(items).length]: { id: data.id, name: data.name, image: data.image },
+    });
+  }
+  if (typeof store === 'object') {
+    localStorage.setItem('favoritesAmount', String(Object.keys(store).length));
+    localStorage.setItem('favoriteItems', JSON.stringify(store));
+  }
+}
+
+export function inFavorite(data: Place): boolean {
+  const itemsData: unknown = localStorage.getItem('favoriteItems');
+  const items =
+    typeof itemsData === 'string' ? JSON.parse(itemsData) : undefined;
+  if (items && Object.keys(items).length > 0) {
+    const values: Favorite[] = Object.values(items);
+    return !!values.find(function (item: Favorite) {
+      return item.id == data.id;
+    });
+  }
+  return false;
+}
+
+export function renderEmptyOrErrorSearchBlock(reasonMessage: string) {
   renderBlock(
     'search-results-block',
     `
@@ -24,7 +65,44 @@ export function renderEmptyOrErrorSearchBlock(reasonMessage) {
   );
 }
 
-export function renderSearchResultsBlock() {
+export function renderSearchResultsBlock(data: Place[]): void {
+  const result = data.map((item: Place) => {
+    let classStr: string;
+    inFavorite(item) ? (classStr = 'active') : (classStr = '');
+    return `<li class="result">
+    <div class="result-container">
+      <div class="result-img-container">
+        <div class="favorites ${classStr}"></div>
+        <img class="result-img" src="${item.image}" alt="${item.name}">
+      </div>	
+      <div class="result-info">
+        <div class="result-info--header">
+          <p>${item.name}</p>
+          <p class="price">${item.price}&#8381;</p>
+        </div>
+        <div class="result-info--map"><i class="map-icon"></i> ${item.remoteness ? item.remoteness + 'км от вас' : 'расстояние не известно'}</div>
+        <div class="result-info--descr">${item.description}</div>
+        <div class="result-info--footer">
+          <div>
+            <button>Забронировать</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </li>`;
+  });
+
+  const sorting = localStorage.getItem('sorting');
+  const sortKeys = Object.keys(SortingMap);
+
+  let sortTemplate = '<select>';
+
+  for (const key of sortKeys) {
+    console.log(SortingMap[key]);
+    sortTemplate += `<option ${sorting === key ? 'selected' : ''} value="${key}">${SortingMap[key].name}</option>`;
+  }
+  sortTemplate += '</select>';
+
   renderBlock(
     'search-results-block',
     `
@@ -32,57 +110,28 @@ export function renderSearchResultsBlock() {
         <p>Результаты поиска</p>
         <div class="search-results-filter">
             <span><i class="icon icon-filter"></i> Сортировать:</span>
-            <select>
-                <option selected="">Сначала дешёвые</option>
-                <option selected="">Сначала дорогие</option>
-                <option>Сначала ближе</option>
-            </select>
+            
+                ${sortTemplate}
+            
         </div>
     </div>
     <ul class="results-list">
-      <li class="result">
-        <div class="result-container">
-          <div class="result-img-container">
-            <div class="favorites active"></div>
-            <img class="result-img" src="./img/result-1.png" alt="">
-          </div>	
-          <div class="result-info">
-            <div class="result-info--header">
-              <p>YARD Residence Apart-hotel</p>
-              <p class="price">13000&#8381;</p>
-            </div>
-            <div class="result-info--map"><i class="map-icon"></i> 2.5км от вас</div>
-            <div class="result-info--descr">Комфортный апарт-отель в самом сердце Санкт-Петербрга. К услугам гостей номера с видом на город и бесплатный Wi-Fi.</div>
-            <div class="result-info--footer">
-              <div>
-                <button>Забронировать</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </li>
-      <li class="result">
-        <div class="result-container">
-          <div class="result-img-container">
-            <div class="favorites"></div>
-            <img class="result-img" src="./img/result-2.png" alt="">
-          </div>	
-          <div class="result-info">
-            <div class="result-info--header">
-              <p>Akyan St.Petersburg</p>
-              <p class="price">13000&#8381;</p>
-            </div>
-            <div class="result-info--map"><i class="map-icon"></i> 1.1км от вас</div>
-            <div class="result-info--descr">Отель Akyan St-Petersburg с бесплатным Wi-Fi на всей территории расположен в историческом здании Санкт-Петербурга.</div>
-            <div class="result-info--footer">
-              <div>
-                <button>Забронировать</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </li>
+      ${result.reduce((sum, current) => sum + current, '')}
     </ul>
     `
   );
+  document.querySelectorAll('.result .favorites').forEach((item, idx) => {
+    item.addEventListener('click', function () {
+      toggleFavoriteItem(data[idx]);
+      renderSearchResultsBlock(data);
+      renderUserInfo();
+    });
+  });
+  document.querySelector('.search-results-filter select')?.addEventListener('change', (e) => {
+    e.preventDefault();
+    const el = <HTMLInputElement>e.target;
+    localStorage.setItem('sorting', el.value);
+    const form = <HTMLFormElement>document.getElementById('form');
+    form.querySelector('button')?.click();
+  });
 }
